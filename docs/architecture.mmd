@@ -1,0 +1,22 @@
+flowchart LR
+  Developer --> GitHubPR[GitHub pull request]
+  GitHubPR --> Actions[GitHub Actions checks]
+  Actions --> GHCR[GHCR image tagged with commit SHA]
+  GHCR --> Staging[Staging]
+  Staging --> Approval{Production approval}
+  Approval --> Production[Production]
+
+  subgraph ComposeHost[Docker Compose host]
+    Nginx[Nginx] --> App[FastAPI app]
+    App -->|/metrics| Prometheus[Prometheus]
+    CAdvisor[cAdvisor] --> Prometheus
+    NodeExporter[Node Exporter] --> Prometheus
+    Prometheus --> Alertmanager[Alertmanager]
+    Alertmanager -->|webhook| Healer[Healer]
+    Prometheus --> Grafana[Grafana]
+    Healer --> DockerProxy[Docker socket proxy]
+    DockerProxy -->|allowlisted recovery| App
+  end
+
+  Healer -->|optional, redacted logs| Anthropic[Anthropic API]
+  Healer -->|optional notification| Telegram[Telegram]

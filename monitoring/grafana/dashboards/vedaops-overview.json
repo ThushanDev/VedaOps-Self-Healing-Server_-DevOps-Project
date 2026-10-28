@@ -1,0 +1,80 @@
+{
+  "annotations": {"list": []},
+  "description": "Container health and HTTP request metrics for VedaOps.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "HEALTHY", "color": "#2F8F5B"}, "1": {"text": "DOWN", "color": "#C8452B"}}}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#2F8F5B", "value": null}, {"color": "#C8452B", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "id": 5,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}, "textMode": "value_and_name"},
+      "targets": [{"expr": "count(ALERTS{alertname=\"ContainerDown\",alertstate=\"firing\"}) or vector(0)", "legendFormat": "ContainerDown", "refId": "A"}],
+      "title": "ContainerDown",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "cores", "min": 0, "color": {"mode": "fixed", "fixedColor": "#2F8F5B"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 1,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".*vedaops-app.*\",container_label_com_docker_compose_project=\"vedaops\"}[5m]))", "legendFormat": "app CPU", "refId": "A"}],
+      "title": "App CPU usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "fixed", "fixedColor": "#E0A100"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 2,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [{"expr": "container_memory_working_set_bytes{name=~\".*vedaops-app.*\",container_label_com_docker_compose_project=\"vedaops\"}", "legendFormat": "app memory", "refId": "A"}],
+      "title": "App memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps", "min": 0, "color": {"mode": "fixed", "fixedColor": "#2F8F5B"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "id": 3,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [{"expr": "sum(rate(vedaops_http_requests_total[5m]))", "legendFormat": "requests/sec", "refId": "A"}],
+      "title": "HTTP request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "fixed", "fixedColor": "#E0A100"}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "id": 4,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [{"expr": "100 * sum(rate(vedaops_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(vedaops_http_requests_total[5m])), 0.001)", "legendFormat": "5xx percent", "refId": "A"}],
+      "title": "HTTP 5xx error rate",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["vedaops", "self-healing"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "VedaOps Overview",
+  "uid": "vedaops-overview",
+  "version": 1
+}

@@ -1,0 +1,48 @@
+groups:
+  - name: vedaops-app
+    rules:
+      - alert: ContainerDown
+        expr: |
+          (
+            max by (container_label_com_docker_compose_project) (
+              time() - container_last_seen{name=~".*vedaops-app.*",container_label_com_docker_compose_project="vedaops"}
+            ) > 30
+            or
+            absent(container_last_seen{name=~".*vedaops-app.*",container_label_com_docker_compose_project="vedaops"})
+          ) and on() up{job="cadvisor"} == 1
+        for: 10s
+        labels:
+          severity: critical
+          container: vedaops-app
+        annotations:
+          summary: "The VedaOps demo container is missing from cAdvisor."
+
+      - alert: CAdvisorDown
+        expr: up{job="cadvisor"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "cAdvisor is unavailable; container health signals may be incomplete."
+
+      - alert: HighMemory
+        expr: container_memory_working_set_bytes{name=~".*vedaops-app.*",container_label_com_docker_compose_project="vedaops"} > 419430400
+        for: 1m
+        labels:
+          severity: warning
+          container: vedaops-app
+        annotations:
+          summary: "The VedaOps demo container memory usage is above 400 MiB."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(vedaops_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(vedaops_http_requests_total[5m])), 0.001)
+          > 0.05
+        for: 1m
+        labels:
+          severity: warning
+          container: vedaops-app
+        annotations:
+          summary: "More than 5% of recent app requests returned server errors."

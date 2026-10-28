@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">VedaOps social preview</title>
+  <desc id="desc">Self-healing server monitoring. Diagnose. Heal. Tell you.</desc>
+  <rect width="1280" height="640" rx="32" fill="#0E2F26"/>
+  <circle cx="1120" cy="130" r="260" fill="#103328"/>
+  <circle cx="1200" cy="580" r="300" fill="#103328"/>
+  <g transform="translate(110 180) scale(2.2)">
+    <rect width="120" height="120" rx="28" fill="#E9EFEA"/>
+    <path d="M16 68H40L50 46L64 90L74 62H84" fill="none" stroke="#0E2F26" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M84 62C82 44 94 32 108 30C110 46 100 60 84 62Z" fill="#E0A100"/>
+    <path d="M84 62L101 40" fill="none" stroke="#0E2F26" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="430" y="326" fill="#E9EFEA" font-family="Bricolage Grotesque, system-ui, sans-serif" font-size="104" font-weight="800" letter-spacing="-5">Veda</text>
+  <text x="688" y="326" fill="#2F8F5B" font-family="Bricolage Grotesque, system-ui, sans-serif" font-size="104" font-weight="500" letter-spacing="-5">Ops</text>
+  <text x="438" y="392" fill="#E9EFEA" font-family="Noto Sans Sinhala, system-ui, sans-serif" font-size="25">වේද · the vedamahaththaya for your servers</text>
+  <text x="438" y="452" fill="#E0A100" font-family="JetBrains Mono, monospace" font-size="20" letter-spacing="2">DIAGNOSE. HEAL. TELL YOU.</text>
+  <path d="M440 510H650" stroke="#2F8F5B" stroke-width="5" stroke-linecap="round"/>
+</svg>

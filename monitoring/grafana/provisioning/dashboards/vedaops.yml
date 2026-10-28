@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: VedaOps
+    orgId: 1
+    folder: VedaOps
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

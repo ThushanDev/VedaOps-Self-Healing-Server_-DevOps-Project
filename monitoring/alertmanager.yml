@@ -1,0 +1,15 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: vedaops-healer
+  group_by: [alertname, container]
+  group_wait: 5s
+  group_interval: 30s
+  repeat_interval: 10m
+
+receivers:
+  - name: vedaops-healer
+    webhook_configs:
+      - url: http://healer:8000/alert
+        send_resolved: false

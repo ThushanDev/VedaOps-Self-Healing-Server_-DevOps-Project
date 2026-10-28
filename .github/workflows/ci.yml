@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, tests, container build, and image scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Check shell script syntax
+        run: bash -n scripts/*.sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --requirement app/requirements.txt --requirement healer/requirements.txt --requirement requirements-dev.txt
+
+      - name: Lint
+        run: ruff check app healer
+
+      - name: Unit tests
+        run: pytest
+
+      - name: Validate Compose and Prometheus configuration
+        run: |
+          docker compose config --quiet
+          docker run --rm --volume "$GITHUB_WORKSPACE/monitoring:/etc/prometheus:ro" --entrypoint=/bin/promtool prom/prometheus:v3.15.0 check config /etc/prometheus/prometheus.yml
+          docker run --rm --volume "$GITHUB_WORKSPACE/monitoring:/etc/prometheus:ro" --entrypoint=/bin/promtool prom/prometheus:v3.15.0 check rules /etc/prometheus/alert.rules.yml
+          docker run --rm --volume "$GITHUB_WORKSPACE/monitoring:/etc/alertmanager:ro" --entrypoint=/bin/amtool prom/alertmanager:v0.34.1 check-config /etc/alertmanager/alertmanager.yml
+
+      - name: Validate environment-specific monitoring files
+        run: |
+          for project in vedaops vedaops-staging vedaops-production; do
+            bash scripts/render-runtime-monitoring.sh "$project"
+            docker run --rm --volume "$GITHUB_WORKSPACE/.runtime:/etc/runtime:ro" --entrypoint=/bin/promtool prom/prometheus:v3.15.0 check rules /etc/runtime/alert.rules.yml
+            jq -e --arg project "$project" '.panels[1].targets[0].expr | contains("container_label_com_docker_compose_project=\"" + $project + "\"")' .runtime/dashboards/vedaops-overview.json > /dev/null
+            pwsh -NoProfile -File scripts/render-runtime-monitoring.ps1 -ProjectName "$project" -RuntimeDirectory ".runtime/powershell"
+            docker run --rm --volume "$GITHUB_WORKSPACE/.runtime/powershell:/etc/runtime:ro" --entrypoint=/bin/promtool prom/prometheus:v3.15.0 check rules /etc/runtime/alert.rules.yml
+            jq -e --arg project "$project" '.panels[1].targets[0].expr | contains("container_label_com_docker_compose_project=\"" + $project + "\"")' .runtime/powershell/dashboards/vedaops-overview.json > /dev/null
+          done
+
+      - name: Build app image
+        run: docker build --tag vedaops-app:ci ./app
+
+      - name: Scan app image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: vedaops-app:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Build healer image
+        run: docker build --tag vedaops-healer:ci ./healer
+
+      - name: Scan healer image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: vedaops-healer:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  secrets:
+    name: Scan repository history for secrets
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

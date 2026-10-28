@@ -1,0 +1,175 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish scanned image to GHCR
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      healer_image: ${{ steps.image.outputs.healer_image }}
+      tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Check out the exact CI commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set image name
+        id: image
+        shell: bash
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/vedaops-app"
+          HEALER_IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/vedaops-healer"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "healer_image=$HEALER_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build --tag "${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}" ./app
+
+      - name: Scan image before publishing
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Build healer image
+        run: docker build --tag "${{ steps.image.outputs.healer_image }}:${{ steps.image.outputs.tag }}" ./healer
+
+      - name: Scan healer image before publishing
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image.outputs.healer_image }}:${{ steps.image.outputs.tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish immutable commit tag
+        run: docker push "${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}"
+
+      - name: Publish healer commit tag
+        run: docker push "${{ steps.image.outputs.healer_image }}:${{ steps.image.outputs.tag }}"
+
+  staging:
+    name: Deploy staging
+    needs: publish
+    if: ${{ vars.ENABLE_STAGING_DEPLOY == 'true' }}
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - name: Deploy and smoke test staging
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          APP_IMAGE: ${{ needs.publish.outputs.image }}:${{ needs.publish.outputs.tag }}
+          HEALER_IMAGE: ${{ needs.publish.outputs.healer_image }}:${{ needs.publish.outputs.tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SHA: ${{ needs.publish.outputs.tag }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: APP_IMAGE,HEALER_IMAGE,GHCR_TOKEN,GHCR_USER,DEPLOY_PATH,DEPLOY_SHA
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+            git fetch --depth=1 origin "$DEPLOY_SHA"
+            git checkout --detach "$DEPLOY_SHA"
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            export COMPOSE_PROJECT_NAME=vedaops-staging APP_PORT=8081
+            export PROMETHEUS_PORT=9091 GRAFANA_PORT=3001
+            export APP_CONTAINER_NAME=vedaops-staging-app HEALER_ALLOWED_CONTAINERS=vedaops-staging-app
+            export HEALER_CONTAINER_NAME=vedaops-staging-healer
+            bash scripts/render-runtime-monitoring.sh "$COMPOSE_PROJECT_NAME"
+            export PROMETHEUS_RULES_FILE=.runtime/alert.rules.yml
+            export GRAFANA_DASHBOARDS_PATH=.runtime/dashboards
+            APP_IMAGE="$APP_IMAGE" docker compose pull app
+            HEALER_IMAGE="$HEALER_IMAGE" docker compose pull healer
+            APP_IMAGE="$APP_IMAGE" HEALER_IMAGE="$HEALER_IMAGE" docker compose up -d --no-build --remove-orphans
+            docker compose restart nginx prometheus alertmanager
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8081/health; then
+                exit 0
+              fi
+              sleep 3
+            done
+            docker compose logs --tail=100 app
+            exit 1
+
+  production:
+    name: Deploy production after staging
+    needs: [publish, staging]
+    if: ${{ always() && vars.ENABLE_PRODUCTION_DEPLOY == 'true' && needs.publish.result == 'success' && needs.staging.result == 'success' }}
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Deploy and smoke test production
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          APP_IMAGE: ${{ needs.publish.outputs.image }}:${{ needs.publish.outputs.tag }}
+          HEALER_IMAGE: ${{ needs.publish.outputs.healer_image }}:${{ needs.publish.outputs.tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SHA: ${{ needs.publish.outputs.tag }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: APP_IMAGE,HEALER_IMAGE,GHCR_TOKEN,GHCR_USER,DEPLOY_PATH,DEPLOY_SHA
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+            git fetch --depth=1 origin "$DEPLOY_SHA"
+            git checkout --detach "$DEPLOY_SHA"
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            export COMPOSE_PROJECT_NAME=vedaops-production APP_PORT=8080
+            export PROMETHEUS_PORT=9090 GRAFANA_PORT=3000
+            export APP_CONTAINER_NAME=vedaops-production-app HEALER_ALLOWED_CONTAINERS=vedaops-production-app
+            export HEALER_CONTAINER_NAME=vedaops-production-healer
+            bash scripts/render-runtime-monitoring.sh "$COMPOSE_PROJECT_NAME"
+            export PROMETHEUS_RULES_FILE=.runtime/alert.rules.yml
+            export GRAFANA_DASHBOARDS_PATH=.runtime/dashboards
+            APP_IMAGE="$APP_IMAGE" docker compose pull app
+            HEALER_IMAGE="$HEALER_IMAGE" docker compose pull healer
+            APP_IMAGE="$APP_IMAGE" HEALER_IMAGE="$HEALER_IMAGE" docker compose up -d --no-build --remove-orphans
+            docker compose restart nginx prometheus alertmanager
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl --fail --silent --show-error --max-time 3 http://127.0.0.1:8080/health; then
+                exit 0
+              fi
+              sleep 3
+            done
+            docker compose logs --tail=100 app
+            exit 1
