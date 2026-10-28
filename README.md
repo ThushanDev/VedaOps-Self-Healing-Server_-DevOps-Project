@@ -71,6 +71,8 @@ Optional integrations are disabled until configured. Set `ANTHROPIC_API_KEY` to 
 
 See [docs/integrations.md](docs/integrations.md) for safe credential setup and Telegram chat ID lookup.
 
+For a free hosted Grafana dashboard without a VPS, see [Grafana Cloud setup](docs/grafana-cloud.md). The local Prometheus stack sends metrics to Grafana Cloud only when its opt-in Compose profile is enabled.
+
 Stop the stack with:
 
 ```powershell

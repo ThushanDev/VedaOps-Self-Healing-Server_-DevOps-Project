@@ -1,6 +1,7 @@
 [tool.pytest.ini_options]
 testpaths = ["app/tests", "healer/tests"]
 python_files = ["test_*.py"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 110
