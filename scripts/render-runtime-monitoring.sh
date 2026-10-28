@@ -10,9 +10,9 @@ fi
 RUNTIME_DIR="${2:-.runtime}"
 mkdir -p "$RUNTIME_DIR/dashboards"
 
-sed 's|\(container_label_com_docker_compose_project="\)vedaops\("\)|\1'"$PROJECT_NAME"'\2|g' \
+sed 's|container_label_com_docker_compose_project="vedaops"|container_label_com_docker_compose_project="'"$PROJECT_NAME"'"|g' \
   monitoring/alert.rules.yml > "$RUNTIME_DIR/alert.rules.yml"
-sed 's|\(container_label_com_docker_compose_project=\\")vedaops\(\\")|\1'"$PROJECT_NAME"'\2|g' \
+sed 's|container_label_com_docker_compose_project=\\"vedaops\\"|container_label_com_docker_compose_project=\\"'"$PROJECT_NAME"'\\"|g' \
   monitoring/grafana/dashboards/vedaops-overview.json \
   > "$RUNTIME_DIR/dashboards/vedaops-overview.json"
 
