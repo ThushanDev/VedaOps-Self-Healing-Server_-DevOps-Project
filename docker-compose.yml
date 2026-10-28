@@ -6,6 +6,9 @@ services:
     build:
       context: ./app
     container_name: ${APP_CONTAINER_NAME:-vedaops-app}
+    environment:
+      HEALER_URL: http://healer:8000
+      DASHBOARD_ACTION_TOKEN: ${DASHBOARD_ACTION_TOKEN:-}
     restart: "no"
     expose:
       - "8080"
@@ -54,6 +57,7 @@ services:
       HEALER_MAX_CALLS_PER_MIN: ${HEALER_MAX_CALLS_PER_MIN:-1}
       HEALER_MAX_RESTARTS_PER_HOUR: ${HEALER_MAX_RESTARTS_PER_HOUR:-3}
       HEALER_LOG_LINES: ${HEALER_LOG_LINES:-50}
+      VEDAOPS_COMPOSE_PROJECT: vedaops
       DOCKER_HOST: tcp://docker-proxy:2375
     expose:
       - "8000"

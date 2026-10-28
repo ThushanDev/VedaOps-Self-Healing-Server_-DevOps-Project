@@ -1,0 +1,8 @@
+.health-chart.has-snapshot{background:repeating-linear-gradient(to bottom,transparent 0,transparent 40px,#10352d 41px)}
+.health-chart.has-snapshot:after{content:none}
+.health-snapshot{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:15px;padding:20px 28px 17px}
+.snapshot-label{font-size:9px;font-weight:700;letter-spacing:1.5px;color:#8ea99e}
+.health-track{height:13px;display:flex;overflow:hidden;border-radius:9px;background:#102722;box-shadow:0 0 0 1px #174337}
+.health-track i{height:100%;display:block}
+.track-healthy{background:linear-gradient(90deg,#16875d,#39d297)}.track-warning{background:var(--yellow)}.track-down{background:var(--red)}
+.snapshot-counts{display:flex;gap:22px;color:#b5ccc3;font-size:10px}.snapshot-counts span{display:flex;align-items:center;gap:6px}.snapshot-counts i{width:7px;height:7px}.health-snapshot small{color:#718d82;font-size:9px}

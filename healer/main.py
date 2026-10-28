@@ -10,6 +10,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 import docker
@@ -76,6 +77,7 @@ class Settings:
     max_restarts_per_hour: int
     log_lines: int
     model: str
+    compose_project: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -92,6 +94,7 @@ class Settings:
             max_restarts_per_hour=max(1, int(os.getenv("HEALER_MAX_RESTARTS_PER_HOUR", "3"))),
             log_lines=max(1, min(200, int(os.getenv("HEALER_LOG_LINES", "50")))),
             model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5"),
+            compose_project=os.getenv("VEDAOPS_COMPOSE_PROJECT", "vedaops").strip() or "vedaops",
         )
 
 
@@ -123,7 +126,14 @@ def get_docker_client() -> docker.DockerClient:
 
 def _record_history(container: str, alert: str, cause: str, action: str, result: str) -> None:
     history.append(
-        {"container": container, "alert": alert, "cause": cause, "action": action, "result": result}
+        {
+            "container": container,
+            "alert": alert,
+            "cause": cause,
+            "action": action,
+            "result": result,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
     )
 
 
@@ -189,6 +199,69 @@ def get_container_logs(name: str) -> str:
             "Could not read logs for allowlisted container %s (%s)", name, type(exc).__name__
         )
         return "Container logs are currently unavailable."
+
+
+def get_managed_container(name: str) -> docker.models.containers.Container:
+    """Return a container only when it belongs to this VedaOps Compose project."""
+    try:
+        container = get_docker_client().containers.get(name)
+        container.reload()
+    except (DockerException, NotFound) as exc:
+        raise HTTPException(status_code=404, detail="Managed container was not found") from exc
+    labels = container.attrs.get("Config", {}).get("Labels") or {}
+    if labels.get("com.docker.compose.project") != settings.compose_project:
+        raise HTTPException(status_code=404, detail="Managed container was not found")
+    return container
+
+
+def list_managed_containers() -> list[dict[str, Any]]:
+    try:
+        items = get_docker_client().containers.list(
+            all=True,
+            filters={"label": f"com.docker.compose.project={settings.compose_project}"},
+        )
+    except DockerException as exc:
+        logger.warning("Could not list managed containers (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Docker host is unavailable") from exc
+    result = []
+    for container in items:
+        try:
+            container.reload()
+            attrs = container.attrs
+            state = attrs.get("State", {})
+            status = "healthy" if container.status == "running" else "down"
+            health = state.get("Health", {}).get("Status")
+            if container.status == "running" and health == "unhealthy":
+                status = "warning"
+            result.append(
+                {
+                    "name": container.name,
+                    "status": status,
+                    "state": container.status,
+                    "health": health or "unknown",
+                    "image": attrs.get("Config", {}).get("Image", "unknown"),
+                    "restarts": int(attrs.get("RestartCount", 0)),
+                    "started_at": state.get("StartedAt", ""),
+                    "restart_allowed": container.name in settings.allowed_containers,
+                }
+            )
+        except (DockerException, ValueError, TypeError) as exc:
+            logger.warning("Could not inspect a managed container (%s)", type(exc).__name__)
+    return result
+
+
+def read_managed_logs(name: str) -> dict[str, str]:
+    get_managed_container(name)
+    return {"name": name, "logs": get_container_logs(name)}
+
+
+def restart_managed_container(name: str) -> dict[str, str]:
+    if name not in settings.allowed_containers:
+        raise HTTPException(status_code=403, detail="Container is not allowlisted for restart")
+    get_managed_container(name)
+    result = apply_restart(name)
+    _record_history(name, "DashboardRestart", "Manual restart requested from dashboard", "restart", result)
+    return {"name": name, "result": result}
 
 
 def apply_restart(name: str) -> str:
@@ -320,6 +393,21 @@ def health() -> dict[str, str]:
 @app.get("/incidents")
 def incidents() -> list[dict[str, str]]:
     return list(history)
+
+
+@app.get("/containers")
+def containers() -> list[dict[str, Any]]:
+    return list_managed_containers()
+
+
+@app.get("/containers/{name}/logs")
+def container_log_endpoint(name: str) -> dict[str, str]:
+    return read_managed_logs(name)
+
+
+@app.post("/actions/restart/{name}")
+def dashboard_restart_endpoint(name: str) -> dict[str, str]:
+    return restart_managed_container(name)
 
 
 @app.post("/alert")

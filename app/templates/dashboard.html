@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#061b19"><title>VedaOps · System Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/dashboard.css"><link rel="stylesheet" href="/static/dashboard-live.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/dashboard"><span class="brand-mark"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 25h9l5-13 8 25 7-19 4 7h7"/><path class="leaf" d="M33 8c8-5 13-1 10 7-2 5-8 6-12 5 0-5 0-9 2-12Z"/></svg></span><span class="brand-name">Veda<span>Ops</span><small>Diagnose. Heal. Tell you.</small></span></a>
+    <div class="top-status"><i class="pulse-dot" id="health-dot"></i><span id="system-label">Connecting…</span><span class="top-sep">·</span><span id="clock"></span></div>
+    <div class="top-right"><a class="icon-btn" href="https://github.com/ThushanDev/VedaOps-Self-Healing-Server_-DevOps-Project" target="_blank" rel="noreferrer" aria-label="GitHub">⌘</a><span class="avatar">V</span><span class="user-name">VedaOps</span></div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav><a class="nav-link selected" href="#overview"><span>◫</span>Dashboard</a><a class="nav-link" href="#containers"><span>⬡</span>Containers</a><a class="nav-link" href="#activity"><span>▤</span>Activity</a><a class="nav-link" href="#stack"><span>⌘</span>Tech stack</a></nav>
+      <div class="sidebar-bottom"><div class="leaf-art">Automate<br>Heal<br>Stay online.</div><div class="sidebar-foot">SMALL STEPS.<br>STRONGER SYSTEMS.</div></div>
+    </aside>
+    <main id="overview" class="main">
+      <div class="page-heading"><div><div class="eyebrow">VEDAOPS / OVERVIEW</div><h1>System Overview</h1><p>Real-time monitoring and self-healing status of your containers.</p></div><button class="refresh-btn" id="refresh"><span>↻</span> Refresh</button></div>
+      <div class="connection-banner hidden" id="connection-banner"><span class="banner-icon">i</span><div><strong>Docker host not connected</strong><p id="connection-message">Container data appears when VedaOps runs with Docker Compose.</p></div><a href="https://github.com/ThushanDev/VedaOps-Self-Healing-Server_-DevOps-Project" target="_blank" rel="noreferrer">Setup guide ↗</a></div>
+      <section class="stats-grid" aria-label="System summary">
+        <article class="stat-card stat-total"><div class="stat-icon">⬡</div><div class="stat-copy"><span>Total containers</span><strong id="total-count">—</strong><small id="running-copy">Waiting for Docker data</small></div></article>
+        <article class="stat-card stat-healthy"><div class="stat-icon">⌁</div><div class="stat-copy"><span>Healthy</span><strong id="healthy-count">—</strong><small id="healthy-percent">—</small></div></article>
+        <article class="stat-card stat-warning"><div class="stat-icon">⚠</div><div class="stat-copy"><span>Warning</span><strong id="warning-count">—</strong><small>Needs attention</small></div></article>
+        <article class="stat-card stat-down"><div class="stat-icon">!</div><div class="stat-copy"><span>Container down</span><strong id="down-count">—</strong><small>Stopped containers</small></div></article>
+      </section>
+      <section class="panel health-panel"><div class="panel-heading"><div><h2><span class="heading-icon green">◈</span>Container health</h2><p>Current status of containers in this Compose project</p></div><div class="legend"><span><i class="green-dot"></i>Healthy</span><span><i class="yellow-dot"></i>Warning</span><span><i class="red-dot"></i>Down</span></div></div><div class="health-chart" id="health-chart"><div class="empty-chart"><span class="chart-glyph">⌁</span><strong>Waiting for live container data</strong><span>Connect this service to the Docker healer to see health changes here.</span></div></div></section>
+      <div class="content-grid">
+        <section class="panel containers-panel" id="containers"><div class="panel-heading"><div><h2><span class="heading-icon green">⬡</span>Container status</h2><p id="container-subtitle">Managed containers in your VedaOps stack</p></div><span class="live-tag"><i></i>LIVE</span></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th>Restarts</th><th>Image</th><th>Actions</th></tr></thead><tbody id="container-rows"><tr><td class="empty-row" colspan="5">Container data will appear when the Docker host is connected.</td></tr></tbody></table></div></section>
+        <section class="panel activity-panel" id="activity"><div class="panel-heading"><div><h2><span class="heading-icon blue">ϟ</span>Recent activity</h2><p>Latest healing and alert events</p></div></div><div class="activity-list" id="activity-list"><div class="activity-empty"><span>◷</span><p>No incidents recorded yet.</p><small>New alert and recovery events will show here.</small></div></div></section>
+      </div>
+      <section class="panel actions-panel"><div class="panel-heading"><div><h2><span class="heading-icon green">✦</span>Quick actions</h2><p>Actions follow your healer allowlist and safety limits.</p></div></div><div class="action-notice" id="action-note">Restart actions are available only in a configured, connected Docker Compose deployment.</div><label class="token-entry hidden" id="token-entry">Dashboard action token<input type="password" id="action-token" autocomplete="off" placeholder="Paste your configured token"><span>Token stays in this browser tab and is never stored on the server.</span></label><div id="action-links" class="action-links"><span class="action-chip">◉ Monitor</span><span class="action-chip">⌕ Diagnose</span><span class="action-chip">⟳ Heal safely</span><span class="action-chip">➤ Notify on Telegram</span></div></section>
+      <footer class="footer"><div><strong>VedaOps</strong><span>·</span>Diagnose. Heal. Tell you.</div><a href="https://github.com/ThushanDev/VedaOps-Self-Healing-Server_-DevOps-Project" target="_blank" rel="noreferrer">Explore the source on GitHub ↗</a></footer>
+    </main>
+    <aside class="right-rail"><section class="panel distribution-panel"><div class="panel-heading"><div><h2>Health distribution</h2></div></div><div class="distribution-body"><div class="donut" id="donut"><div><strong id="donut-total">—</strong><span>Total</span></div></div><div class="distribution-legend"><span><i class="green-dot"></i>Healthy <b id="legend-healthy">—</b></span><span><i class="yellow-dot"></i>Warning <b id="legend-warning">—</b></span><span><i class="red-dot"></i>Down <b id="legend-down">—</b></span></div></div></section><section class="panel stack-panel" id="stack"><div class="panel-heading"><div><h2>Tech stack</h2></div></div><div class="stack-grid"><div><b class="stack-logo docker">▰</b><span>Docker</span></div><div><b class="stack-logo linux">◉</b><span>Linux</span></div><div><b class="stack-logo terminal">›_</b><span>Automation</span></div><div><b class="stack-logo grafana">◉</b><span>Grafana</span></div><div><b class="stack-logo telegram">➤</b><span>Telegram</span></div></div></section><section class="resilient-card"><span>♧</span><div><strong>Built for resilient systems.</strong><small>Automate · Heal · Stay online</small></div></section></aside>
+  </div>
+  <dialog id="logs-dialog"><div class="dialog-head"><div><span class="eyebrow">CONTAINER LOGS</span><h2 id="logs-title">Logs</h2></div><button id="close-logs" aria-label="Close">×</button></div><pre id="logs-content">Loading…</pre></dialog>
+  <script src="/static/dashboard.js" defer></script>
+</body></html>

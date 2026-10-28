@@ -10,6 +10,8 @@ VedaOps watches your containers, finds why they fell, and heals them safely. It 
 
 Target GitHub repository: [ThushanDev/VedaOps-Self-Healing-Server_-DevOps-Project](https://github.com/ThushanDev/VedaOps-Self-Healing-Server_-DevOps-Project)
 
+For the responsive web dashboard and Docker setup, see [the dashboard guide](docs/dashboard.md).
+
 ## What is included
 
 - FastAPI demo API with `/health` and Prometheus `/metrics` endpoints.
