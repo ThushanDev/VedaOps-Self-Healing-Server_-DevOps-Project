@@ -57,7 +57,10 @@ async def healer_request(path: str, *, method: str = "GET") -> httpx.Response:
         async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.request(method, f"{base_url}{path}")
         if response.is_error:
-            raise HTTPException(status_code=response.status_code, detail="Healer could not complete the request.")
+            raise HTTPException(
+                status_code=response.status_code,
+                detail="Healer could not complete the request.",
+            )
         return response
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=503, detail="Docker healer is temporarily unavailable.") from exc
