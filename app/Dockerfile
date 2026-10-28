@@ -7,6 +7,8 @@ WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir --requirement requirements.txt
 COPY main.py .
+COPY templates ./templates
+COPY static ./static
 
 EXPOSE 8080
 USER 10001:10001
