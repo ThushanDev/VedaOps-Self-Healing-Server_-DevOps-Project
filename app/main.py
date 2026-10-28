@@ -1,6 +1,9 @@
 """Small instrumented HTTP service used by the VedaOps demo."""
 
-from fastapi import FastAPI, Request
+import hmac
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
@@ -36,5 +39,10 @@ def health() -> dict[str, str]:
 
 
 @app.get("/metrics", include_in_schema=False)
-def metrics() -> Response:
+def metrics(request: Request) -> Response:
+    bearer_token = os.getenv("METRICS_BEARER_TOKEN", "").strip()
+    if bearer_token and not hmac.compare_digest(
+        request.headers.get("authorization", ""), f"Bearer {bearer_token}"
+    ):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
